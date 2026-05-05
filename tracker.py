@@ -11,10 +11,9 @@ import rumps
 
 sys.path.insert(0, str(Path(__file__).parent))
 from db import init_db, save_activity_for_slot, get_slot_record, DB_PATH
-from config import get_categories
+from config import get_categories, get_interval
 
 DIR      = Path(__file__).parent
-INTERVAL = 15 * 60
 APP_PATH = Path.home() / "Applications" / "ActivityTracker.app"
 PLIST    = Path.home() / "Library/LaunchAgents/com.activitytracker.tracker.plist"
 
@@ -129,10 +128,9 @@ return theNote
 # ── resettable timer ──────────────────────────────────────────────────────────
 
 class ResettableTimer:
-    def __init__(self, interval: int, callback):
-        self._interval = interval
+    def __init__(self, callback):
         self._callback = callback
-        self._next     = datetime.now() + timedelta(seconds=interval)
+        self._next     = datetime.now() + timedelta(seconds=get_interval() * 60)
         self._wake     = threading.Event()
         threading.Thread(target=self._loop, daemon=True).start()
 
@@ -140,7 +138,7 @@ class ResettableTimer:
         while True:
             remaining = (self._next - datetime.now()).total_seconds()
             if remaining <= 0:
-                self._next = datetime.now() + timedelta(seconds=self._interval)
+                self._next = datetime.now() + timedelta(seconds=get_interval() * 60)
                 try:
                     self._callback()
                 except Exception:
@@ -150,7 +148,7 @@ class ResettableTimer:
                 self._wake.clear()
 
     def reset_from_now(self):
-        self._next = datetime.now() + timedelta(seconds=self._interval)
+        self._next = datetime.now() + timedelta(seconds=get_interval() * 60)
         self._wake.set()
 
 
@@ -160,7 +158,7 @@ class ActivityTracker(rumps.App):
     def __init__(self):
         super().__init__("⏱", quit_button=None)
         self._lock  = threading.Lock()
-        self._timer = ResettableTimer(INTERVAL, self._on_timer)
+        self._timer = ResettableTimer(self._on_timer)
         self.menu   = [
             rumps.MenuItem("记录当前活动 …", callback=self.prompt_activity),
             rumps.MenuItem("查看 Dashboard", callback=self.open_dashboard),

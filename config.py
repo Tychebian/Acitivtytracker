@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """User-configurable category list, persisted to ~/.activity_tracker/config.json."""
+
+__version__ = "1.0.1"
 import json
 from pathlib import Path
 
@@ -86,4 +88,17 @@ def delete_category(name: str):
     if not remaining:
         raise ValueError("cannot delete the last category")
     cfg["categories"] = remaining
+    _save(cfg)
+
+
+def get_interval() -> int:
+    """Return popup interval in minutes (default 20)."""
+    return int(_load().get("interval", 20))
+
+
+def set_interval(minutes: int) -> None:
+    if not (5 <= minutes <= 120):
+        raise ValueError("interval must be 5–120 minutes")
+    cfg = _load()
+    cfg["interval"] = minutes
     _save(cfg)

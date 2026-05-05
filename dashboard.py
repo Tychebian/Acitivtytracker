@@ -39,6 +39,7 @@ def api_meta():
     return jsonify({
         "categories": [c["name"] for c in cats],
         "colors":     {c["name"]: c["color"] for c in cats},
+        "version":    cfg.__version__,
     })
 
 
@@ -98,6 +99,18 @@ def api_cat_delete():
 
 # ── activities ────────────────────────────────────────────────────────────────
 
+@app.route("/api/config/interval", methods=["GET", "POST"])
+def api_interval():
+    if request.method == "GET":
+        return jsonify({"interval": cfg.get_interval()})
+    mins = int((request.get_json(force=True) or {}).get("interval", 20))
+    try:
+        cfg.set_interval(mins)
+        return jsonify({"ok": True, "interval": mins})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
 @app.route("/api/activities")
 def api_activities():
     start = request.args.get("start", "")
@@ -105,7 +118,7 @@ def api_activities():
     if not start or not end:
         return jsonify({"error": "start and end required"}), 400
     rows = _q(
-        "SELECT id,timestamp,category,note FROM activities "
+        "SELECT id,timestamp,end_time,category,note FROM activities "
         "WHERE timestamp>=? AND timestamp<? ORDER BY timestamp ASC",
         (start, end),
     )
@@ -118,14 +131,17 @@ def api_cat_stats():
     end   = request.args.get("end", "")
     if not start or not end:
         return jsonify({"error": "start and end required"}), 400
-    # Base: all known categories at zero
-    result = {c["name"]: 0 for c in cfg.get_categories()}
+    iv = cfg.get_interval()
+    result = {c["name"]: {"mins": 0, "cnt": 0} for c in cfg.get_categories()}
     for r in _q(
-        "SELECT category,COUNT(*) cnt FROM activities "
-        "WHERE timestamp>=? AND timestamp<? GROUP BY category",
-        (start, end),
+        """SELECT category, COUNT(*) AS cnt,
+                  SUM(CASE WHEN end_time IS NOT NULL
+                    THEN CAST((julianday(end_time) - julianday(timestamp)) * 1440 AS INTEGER)
+                    ELSE ? END) AS total_mins
+           FROM activities WHERE timestamp>=? AND timestamp<? GROUP BY category""",
+        (iv, start, end),
     ):
-        result[r["category"]] = r["cnt"]  # unknown (deleted) cats appear as extras
+        result[r["category"]] = {"mins": r["total_mins"] or 0, "cnt": r["cnt"]}
     return jsonify(result)
 
 
@@ -203,26 +219,27 @@ def api_focus_topic_delete(tid):
 
 @app.route("/api/activities/add_manual", methods=["POST"])
 def api_add_manual():
-    """Add a record for any arbitrary past 15-min slot."""
+    """Add a record for any arbitrary past time, with optional end_time."""
     from datetime import datetime as dt
     data     = request.get_json(force=True)
     date_str = (data.get("date") or "").strip()      # YYYY-MM-DD
-    time_str = (data.get("time") or "").strip()      # HH:MM
+    time_str = (data.get("time") or "").strip()      # HH:MM  (start)
+    end_time = (data.get("end_time") or "").strip() or None  # full ISO
     category = (data.get("category") or "").strip()
     note     = (data.get("note") or "").strip()
     if not date_str or not time_str or not category:
         return jsonify({"error": "date, time, and category required"}), 400
     try:
         hour, minute = map(int, time_str.split(":"))
-        slot_min = (minute // 15) * 15
         slot_start = dt.strptime(date_str, "%Y-%m-%d").replace(
-            hour=hour, minute=slot_min, second=0, microsecond=0
+            hour=hour, minute=minute, second=0, microsecond=0
         )
     except (ValueError, AttributeError) as e:
         return jsonify({"error": f"invalid date/time: {e}"}), 400
 
     from db import save_activity_for_slot
-    save_activity_for_slot(category, note or category, slot_start, ts=slot_start)
+    save_activity_for_slot(category, note or category, slot_start,
+                           ts=slot_start, end_time=end_time)
     return jsonify({"ok": True})
 
 
@@ -231,11 +248,12 @@ def api_act_update(aid):
     data     = request.get_json(force=True)
     category = (data.get("category") or "").strip()
     note     = (data.get("note") or "").strip()
+    end_time = (data.get("end_time") or "").strip() or None
     if not category:
         return jsonify({"error": "category required"}), 400
     with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("UPDATE activities SET category=?,note=? WHERE id=?",
-                     (category, note, aid))
+        conn.execute("UPDATE activities SET category=?,note=?,end_time=? WHERE id=?",
+                     (category, note, end_time, aid))
     return jsonify({"ok": True})
 
 

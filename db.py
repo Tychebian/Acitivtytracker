@@ -24,6 +24,8 @@ def init_db():
             conn.execute(
                 "ALTER TABLE activities ADD COLUMN category TEXT NOT NULL DEFAULT '工作'"
             )
+        if "end_time" not in cols:
+            conn.execute("ALTER TABLE activities ADD COLUMN end_time TEXT")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS focus_topics (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,25 +54,24 @@ def get_slot_record(slot_start: datetime):
 
 
 def save_activity_for_slot(
-    category: str, note: str, slot_start: datetime, ts: datetime | None = None
+    category: str, note: str, slot_start: datetime,
+    ts: datetime | None = None, end_time: str | None = None,
 ):
-    """Upsert: delete any prior record in the same 15-min slot, then insert.
-
-    ts overrides the stored timestamp (used for backdated manual adds).
-    Defaults to datetime.now() for live timer recordings.
-    """
+    """Upsert: delete any prior record in the same 15-min slot, then insert."""
     s, e = _slot_bounds(slot_start)
     stored_ts = (ts or datetime.now()).isoformat(timespec="seconds")
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("DELETE FROM activities WHERE timestamp >= ? AND timestamp < ?", (s, e))
         conn.execute(
-            "INSERT INTO activities (timestamp, category, note) VALUES (?, ?, ?)",
-            (stored_ts, category, note),
+            "INSERT INTO activities (timestamp, category, note, end_time) VALUES (?, ?, ?, ?)",
+            (stored_ts, category, note, end_time),
         )
 
 
 def get_focus_topics_with_stats():
-    """All focus topics with total count and last-7-day count, sorted by total desc."""
+    """All focus topics with duration stats, sorted by total minutes desc."""
+    from config import get_interval
+    iv = get_interval()
     week_ago = (datetime.now() - timedelta(days=7)).isoformat(timespec="seconds")
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
@@ -78,14 +79,20 @@ def get_focus_topics_with_stats():
             """
             SELECT ft.id, ft.name,
                    COUNT(a.id) AS total_cnt,
+                   COALESCE(SUM(
+                     CASE WHEN a.end_time IS NOT NULL
+                       THEN CAST((julianday(a.end_time) - julianday(a.timestamp)) * 1440 AS INTEGER)
+                       ELSE ?
+                     END
+                   ), 0) AS total_mins,
                    SUM(CASE WHEN a.timestamp >= ? THEN 1 ELSE 0 END) AS cnt_7d
             FROM focus_topics ft
             LEFT JOIN activities a ON a.note = ft.name
             GROUP BY ft.id
-            ORDER BY total_cnt DESC
+            ORDER BY total_mins DESC
             LIMIT 10
             """,
-            (week_ago,),
+            (iv, week_ago),
         ).fetchall()
     return [dict(r) for r in rows]
 

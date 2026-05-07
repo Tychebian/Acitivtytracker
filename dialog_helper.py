@@ -81,14 +81,9 @@ def main():
     root.resizable(False, False)
     root.configure(bg=BG)
 
-    # Activate immediately — NSApp is valid as soon as tk.Tk() runs.
-    # Must happen BEFORE mainloop so the first click reaches the button,
-    # not the OS window-activation handler.
-    try:
-        from AppKit import NSApp
-        NSApp.activateIgnoringOtherApps_(True)
-    except Exception:
-        pass
+    # Start invisible so the window doesn't flash before we're the active app.
+    # We'll activate + reveal on the first event-loop tick via after(1, ...).
+    root.wm_attributes("-alpha", 0.0)
 
     result   = []
     init_cat = (existing or {}).get("category", names[0] if names else "")
@@ -185,17 +180,33 @@ def main():
               relief="raised", bd=1, cursor="hand2",
               font=("Helvetica", 12)).pack(side="right", padx=(0, 8))
 
-    # ── position and show ─────────────────────────────────────────────────────
+    # ── position ──────────────────────────────────────────────────────────────
     root.update_idletasks()
     w, h = root.winfo_reqwidth(), root.winfo_reqheight()
     sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
     root.geometry(f"{w}x{h}+{(sw - w)//2}+{max(0, (sh - h)//2 - 80)}")
 
-    # Keep on top briefly so nothing can cover it before the user notices
-    root.attributes("-topmost", True)
-    root.after(800, lambda: root.attributes("-topmost", False))
-    root.focus_force()
+    def _activate_and_show():
+        # By the time this runs the event loop is already ticking, so
+        # activateIgnoringOtherApps_ is processed synchronously — the app
+        # becomes frontmost BEFORE the window becomes visible. That means
+        # the OS "first-click-activates" interception never fires.
+        try:
+            from AppKit import NSRunningApplication
+            NSRunningApplication.currentApplication().activateWithOptions_(1)
+        except Exception:
+            try:
+                from AppKit import NSApp
+                NSApp.activateIgnoringOtherApps_(True)
+            except Exception:
+                pass
+        root.wm_attributes("-alpha", 1.0)
+        root.lift()
+        root.focus_force()
+        root.attributes("-topmost", True)
+        root.after(600, lambda: root.attributes("-topmost", False))
 
+    root.after(1, _activate_and_show)
     root.mainloop()
 
     if result:

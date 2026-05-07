@@ -160,16 +160,19 @@ class ActivityTracker(rumps.App):
         self._lock  = threading.Lock()
         self._timer = ResettableTimer(self._on_timer)
         self.menu   = [
-            rumps.MenuItem("记录当前活动 …", callback=self.prompt_activity),
+            rumps.MenuItem("记录当前活动 …", callback=self._manual_prompt),
             rumps.MenuItem("查看 Dashboard", callback=self.open_dashboard),
             None,
             rumps.MenuItem("退出",           callback=self.quit_app),
         ]
 
     def _on_timer(self):
-        self.prompt_activity(None)
+        self.prompt_activity(None, force=False)
 
-    def prompt_activity(self, _):
+    def _manual_prompt(self, _):
+        self.prompt_activity(None, force=True)
+
+    def prompt_activity(self, _, force=True):
         if not self._lock.acquire(blocking=False):
             return
         try:
@@ -177,6 +180,12 @@ class ActivityTracker(rumps.App):
             slot_start = now.replace(minute=(now.minute // 15) * 15,
                                      second=0, microsecond=0)
             existing   = get_slot_record(slot_start)
+
+            # Auto-trigger: current slot already recorded — silently skip
+            if not force and existing:
+                self._timer.reset_from_now()
+                return
+
             existing_d = {"category": existing[1], "note": existing[2]} if existing else None
 
             data = ask_via_osascript(

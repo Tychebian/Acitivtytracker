@@ -2,8 +2,8 @@
 
 > 一款基于《秀逗魔導士》主题的 macOS 菜单栏时间追踪工具，自动定时提醒记录当前活动，并提供完整的可视化 Dashboard。
 
-[![Version](https://img.shields.io/badge/version-v1.0.1-c8320a)](https://github.com/Tychebian/Acitivtytracker/releases)
-[![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)](https://github.com/Tychebian/Acitivtytracker)
+[![Version](https://img.shields.io/badge/version-v1.0.1-c8320a)](https://github.com/Tychebian/Activitytracker/releases)
+[![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)](https://github.com/Tychebian/Activitytracker)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://python.org)
 
 ---

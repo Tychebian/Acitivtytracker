@@ -75,18 +75,34 @@ cat > "$MACOS_DIR/$APP_NAME" << 'LAUNCHER'
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 RESOURCES="$SCRIPT_DIR/../Resources"
 
-# 探测含有 rumps / flask 的 Python
+# 优先使用安装脚本记录的 Python 路径
 PYTHON=""
-for _py in \
-    "/opt/anaconda3/bin/python3" \
-    "/opt/homebrew/bin/python3" \
-    "/usr/local/bin/python3" \
-    "$(which python3 2>/dev/null)"; do
-  [ -z "$_py" ] || [ ! -f "$_py" ] && continue
-  if "$_py" -c "import rumps, flask" 2>/dev/null; then
-    PYTHON="$_py"; break
+SAVED_PYTHON="$HOME/.activity_tracker/python_path"
+if [ -f "$SAVED_PYTHON" ]; then
+  _saved_py="$(cat "$SAVED_PYTHON" | tr -d '[:space:]')"
+  if [ -f "$_saved_py" ] && "$_saved_py" -c "import rumps, flask" 2>/dev/null; then
+    PYTHON="$_saved_py"
   fi
-done
+fi
+
+# 回落：搜索常见 Python 安装路径
+if [ -z "$PYTHON" ]; then
+  for _py in \
+      "$HOME/anaconda3/bin/python3" \
+      "$HOME/miniconda3/bin/python3" \
+      "$HOME/opt/anaconda3/bin/python3" \
+      "/opt/anaconda3/bin/python3" \
+      "/opt/miniconda3/bin/python3" \
+      "/opt/homebrew/bin/python3" \
+      "/usr/local/bin/python3" \
+      "/usr/bin/python3" \
+      "$(which python3 2>/dev/null)"; do
+    [ -z "$_py" ] || [ ! -f "$_py" ] && continue
+    if "$_py" -c "import rumps, flask" 2>/dev/null; then
+      PYTHON="$_py"; break
+    fi
+  done
+fi
 
 if [ -z "$PYTHON" ]; then
   osascript -e 'display dialog "未找到已安装 rumps / flask 的 Python 环境。\n\n请先运行 DMG 中的「安装 ActivityTracker.command」来自动配置环境。" buttons {"好的"} default button "好的" with icon stop'
@@ -124,9 +140,14 @@ echo ""
 echo "▶ 检查 Python 环境..."
 PYTHON=""
 for _py in \
+    "\$HOME/anaconda3/bin/python3" \
+    "\$HOME/miniconda3/bin/python3" \
+    "\$HOME/opt/anaconda3/bin/python3" \
     "/opt/anaconda3/bin/python3" \
+    "/opt/miniconda3/bin/python3" \
     "/opt/homebrew/bin/python3" \
     "/usr/local/bin/python3" \
+    "/usr/bin/python3" \
     "\$(which python3 2>/dev/null)"; do
   [ -z "\$_py" ] || [ ! -f "\$_py" ] && continue
   if "\$_py" -c "import sys; assert sys.version_info >= (3,10)" 2>/dev/null; then
@@ -148,6 +169,12 @@ echo "▶ 安装 Python 依赖包（首次约需 1-2 分钟）..."
 "\$PYTHON" -m pip install --quiet --upgrade pip
 "\$PYTHON" -m pip install --quiet rumps flask pyobjc-framework-WebKit
 echo "  依赖安装完成 ✓"
+
+# 记录 Python 路径供 App 启动器使用
+LOG_DIR_EARLY="\$HOME/.activity_tracker"
+mkdir -p "\$LOG_DIR_EARLY"
+echo "\$PYTHON" > "\$LOG_DIR_EARLY/python_path"
+echo "  Python 路径已记录 ✓"
 
 # ── 3. 复制 App ─────────────────────────────────────────────
 echo ""

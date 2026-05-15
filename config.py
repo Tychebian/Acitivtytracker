@@ -102,3 +102,13 @@ def set_interval(minutes: int) -> None:
     cfg = _load()
     cfg["interval"] = minutes
     _save(cfg)
+
+
+def get_auto_popup() -> bool:
+    return bool(_load().get("auto_popup", True))
+
+
+def set_auto_popup(enabled: bool) -> None:
+    cfg = _load()
+    cfg["auto_popup"] = bool(enabled)
+    _save(cfg)

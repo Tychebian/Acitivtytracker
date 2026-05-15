@@ -33,6 +33,11 @@ def init_db():
                 created_at TEXT NOT NULL
             )
         """)
+        cols_ft = {row[1] for row in conn.execute("PRAGMA table_info(focus_topics)")}
+        if "category" not in cols_ft:
+            conn.execute("ALTER TABLE focus_topics ADD COLUMN category TEXT NOT NULL DEFAULT ''")
+        if "priority" not in cols_ft:
+            conn.execute("ALTER TABLE focus_topics ADD COLUMN priority TEXT NOT NULL DEFAULT '中'")
 
 
 def _slot_bounds(slot_start: datetime):
@@ -77,7 +82,7 @@ def get_focus_topics_with_stats():
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             """
-            SELECT ft.id, ft.name,
+            SELECT ft.id, ft.name, ft.category, ft.priority,
                    COUNT(a.id) AS total_cnt,
                    COALESCE(SUM(
                      CASE WHEN a.end_time IS NOT NULL
@@ -95,6 +100,47 @@ def get_focus_topics_with_stats():
             (iv, week_ago),
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def get_focus_topics_by_category(category: str) -> list:
+    """Return focus topics for a category sorted by priority then recent activity count."""
+    cutoff = (datetime.now() - timedelta(days=30)).isoformat(timespec="seconds")
+    prio_order = {"高": 0, "中": 1, "低": 2}
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT ft.name, ft.priority,
+                   COUNT(a.id) AS cnt
+            FROM focus_topics ft
+            LEFT JOIN activities a ON a.note = ft.name AND a.timestamp > ?
+            WHERE ft.category = ?
+            GROUP BY ft.id
+            """,
+            (cutoff, category),
+        ).fetchall()
+    result = [dict(r) for r in rows]
+    result.sort(key=lambda r: (prio_order.get(r["priority"], 1), -r["cnt"]))
+    return result
+
+
+def migrate_topic_category(topic_id: int, new_category: str) -> int:
+    """Move a focus topic to a new category and migrate all matching activity records."""
+    with sqlite3.connect(DB_PATH) as conn:
+        row = conn.execute("SELECT name FROM focus_topics WHERE id=?", (topic_id,)).fetchone()
+        if not row:
+            raise KeyError(f"topic {topic_id} not found")
+        topic_name = row[0]
+        cur = conn.execute(
+            "UPDATE activities SET category=? WHERE note=?",
+            (new_category, topic_name),
+        )
+        migrated = cur.rowcount
+        conn.execute(
+            "UPDATE focus_topics SET category=? WHERE id=?",
+            (new_category, topic_id),
+        )
+    return migrated
 
 
 # kept for dashboard edit/delete which don't use slot logic

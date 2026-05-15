@@ -10,7 +10,7 @@ from pathlib import Path
 import rumps
 
 sys.path.insert(0, str(Path(__file__).parent))
-from db import init_db, save_activity_for_slot, get_slot_record, DB_PATH
+from db import init_db, save_activity_for_slot, get_slot_record, DB_PATH, get_focus_topics_by_category
 from config import get_categories, get_interval
 
 DIR      = Path(__file__).parent
@@ -92,19 +92,45 @@ return item 1 of chosen
     if r1.returncode != 0 or category in ("", "SKIP"):
         return None
 
-    # step 2 — choose / enter note
-    note_items = recent + ["✏  自定义输入…"]
-    def_note   = (existing["note"]
-                  if existing and existing["note"] not in names
-                  else (recent[0] if recent else "✏  自定义输入…"))
-    notes_as   = "{" + ",".join(f'"{_as(n)}"' for n in note_items) + "}"
+    # step 2 — 按分类下定义的关注主题（带优先级标记）+ 自定义输入
+    PRIO_PREFIX = {"高": "★ ", "中": "", "低": "▽ "}
+    cat_topics = get_focus_topics_by_category(category)  # sorted: prio then freq
+
+    display_to_name: dict[str, str] = {}
+    note_items: list[str] = []
+    for t in cat_topics:
+        prefix  = PRIO_PREFIX.get(t["priority"], "")
+        display = f"{prefix}{t['name']}"
+        display_to_name[display] = t["name"]
+        note_items.append(display)
+
+    # 如果该分类下没有定义主题，回落到最近的历史 note
+    if not note_items:
+        for n in _recent_notes([category]):
+            display_to_name[n] = n
+            note_items.append(n)
+
+    CUSTOM = "✏  自定义输入…"
+    note_items.append(CUSTOM)
+
+    # 默认选中：优先匹配已有记录的主题
+    if existing and existing["note"]:
+        existing_note = existing["note"]
+        def_display = next(
+            (d for d, n in display_to_name.items() if n == existing_note),
+            existing_note,
+        )
+    else:
+        def_display = note_items[0]
+
+    notes_as = "{" + ",".join(f'"{_as(n)}"' for n in note_items) + "}"
 
     r2 = subprocess.run(["osascript", "-e", f"""
 set noteList to {notes_as}
 set chosen to choose from list noteList ¬
     with title "⏱ {_as(category)}" ¬
-    with prompt "在做什么？（可选高频内容或自定义）" ¬
-    default items {{"{_as(def_note)}"}}
+    with prompt "在做什么？（★高优先  ▽低优先  无标=中优先）" ¬
+    default items {{"{_as(def_display)}"}}
 if chosen is false then return "SKIP"
 set theNote to item 1 of chosen
 if theNote is "✏  自定义输入…" then
@@ -118,9 +144,13 @@ if theNote is "✏  自定义输入…" then
 end if
 return theNote
 """], capture_output=True, text=True)
-    note = r2.stdout.strip()
-    if r2.returncode != 0 or note in ("", "SKIP"):
+
+    note_display = r2.stdout.strip()
+    if r2.returncode != 0 or note_display in ("", "SKIP"):
         return None
+
+    # 还原真实主题名（去掉优先级前缀）
+    note = display_to_name.get(note_display, note_display)
 
     return {"category": category, "note": note}
 
@@ -167,7 +197,9 @@ class ActivityTracker(rumps.App):
         ]
 
     def _on_timer(self):
-        self.prompt_activity(None, force=False)
+        from config import get_auto_popup
+        if get_auto_popup():
+            self.prompt_activity(None, force=False)
 
     def _manual_prompt(self, _):
         self.prompt_activity(None, force=True)

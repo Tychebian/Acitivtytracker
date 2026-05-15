@@ -352,6 +352,94 @@ body::before {
 .cp-sw { width: 22px; height: 22px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; transition: transform .1s; }
 .cp-sw:hover { transform: scale(1.2); border-color: var(--gold); }
 
+/* ── settings left-right layout ── */
+.lr-layout { display: grid; grid-template-columns: 200px 1fr; gap: 16px; min-height: 260px; }
+.lr-left {
+  border-right: 1.5px solid var(--border);
+  padding-right: 14px;
+}
+.lr-right { padding-left: 4px; }
+.cat-list-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: 6px; cursor: pointer;
+  font-size: .82rem; font-weight: 600; letter-spacing: .04em;
+  transition: background .12s; margin-bottom: 3px;
+  border: 1.5px solid transparent;
+}
+.cat-list-item:hover { background: var(--parch3); }
+.cat-list-item.selected { background: var(--parch3); border-color: var(--border); }
+.cat-list-item .cat-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.cat-list-item .cat-item-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cat-list-item .cat-item-cnt { font-size:.65rem; color:var(--ink3); font-weight:400; flex-shrink:0; }
+.cat-actions { display:flex; gap:4px; opacity:0; transition:opacity .12s; }
+.cat-list-item:hover .cat-actions { opacity:1; }
+.cat-action-btn { background:none; border:none; font-size:.75rem; color:var(--ink3); cursor:pointer; padding:1px 4px; border-radius:3px; }
+.cat-action-btn:hover { color:var(--crimson); background:#fde8e0; }
+
+/* ── settings sub-tabs ── */
+.stab-row { display: flex; gap: 6px; margin-bottom: 18px; border-bottom: 1.5px solid var(--border); padding-bottom: 10px; }
+.stab {
+  padding: 6px 18px; border-radius: 6px 6px 0 0; border: 1.5px solid transparent;
+  background: none; color: var(--ink3); font-size: .8rem; font-weight: 700;
+  letter-spacing: .06em; cursor: pointer; transition: all .15s;
+}
+.stab:hover { color: var(--ink); }
+.stab.on { background: var(--parch); border-color: var(--border); border-bottom-color: var(--parch); color: var(--crimson); margin-bottom: -1.5px; }
+
+/* ── category sections (nested) ── */
+.cat-section {
+  border-left: 3px solid var(--border);
+  border-radius: 0 6px 6px 0;
+  background: var(--parch);
+  padding: 10px 12px 10px 14px;
+  margin-bottom: 10px;
+}
+.cat-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.topic-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 0 4px 16px; border-top: 1px solid var(--border2);
+}
+.topic-row:first-of-type { border-top: none; }
+.topic-name {
+  flex: 1; border: none; background: transparent; font-size: .82rem;
+  color: var(--ink); padding: 3px 5px; border-radius: 4px; min-width: 0;
+}
+.topic-name:hover { background: var(--parch3); }
+.topic-name:focus { background: var(--parch3); outline: 1px solid var(--border); }
+.topic-reassign {
+  font-size: .72rem; padding: 3px 6px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--parch3);
+  color: var(--ink3); cursor: pointer; max-width: 110px;
+}
+.topic-reassign:focus { outline: 1px solid var(--gold); }
+.topic-del { background: none; border: none; color: var(--ink3); cursor: pointer; font-size: .82rem; padding: 2px 5px; border-radius: 3px; flex-shrink: 0; }
+.topic-del:hover { color: #a02808; background: #fde8e0; }
+.topic-add-row {
+  display: flex; gap: 6px; align-items: center;
+  padding: 6px 0 2px 14px; border-top: 1px dashed var(--border);
+  margin-top: 4px;
+}
+
+/* 推算结束时间（淡色 + 斜体表示非实际值） */
+.est-time { color: var(--ink3) !important; font-style: italic; }
+
+/* 优先级徽章 */
+.prio-badge {
+  display: inline-block; font-size: .6rem; font-weight: 700;
+  color: #fff; padding: 1px 5px; border-radius: 3px;
+  letter-spacing: .04em; vertical-align: middle; margin-left: 4px; flex-shrink: 0;
+}
+/* 优先级按钮组（设置面板用） */
+.prio-btn {
+  padding: 2px 8px; border-radius: 4px; border: 1.5px solid var(--border);
+  background: none; font-size: .7rem; font-weight: 700; cursor: pointer;
+  color: var(--ink3); transition: all .12s;
+}
+.prio-btn:hover { border-color: currentColor; }
+.prio-btn.active-高 { background: #c8320a; border-color: #c8320a; color: #fff; }
+.prio-btn.active-中 { background: #b07a10; border-color: #b07a10; color: #fff; }
+.prio-btn.active-低 { background: #888; border-color: #888; color: #fff; }
+
 /* ── misc ── */
 .empty-state {
   text-align: center; color: var(--ink3); padding: 48px 0;
@@ -419,9 +507,10 @@ body::before {
 <!-- controls -->
 <div class="controls">
   <div class="tab-row">
-    <button class="tab" id="tab-day"   onclick="setView('day')">按天</button>
-    <button class="tab" id="tab-week"  onclick="setView('week')">按周</button>
-    <button class="tab" id="tab-month" onclick="setView('month')">按月</button>
+    <button class="tab" id="tab-day"      onclick="setView('day')">按天</button>
+    <button class="tab" id="tab-week"     onclick="setView('week')">按周</button>
+    <button class="tab" id="tab-month"    onclick="setView('month')">按月</button>
+    <button class="tab" id="tab-topic"    onclick="setView('topic')">按主题</button>
     <button class="tab" id="tab-settings" onclick="setView('settings')">⚙ 设置</button>
   </div>
 </div>
@@ -451,32 +540,29 @@ body::before {
 <!-- category summary -->
 <div class="cat-row" id="cat-summary"></div>
 
-<!-- top notes -->
-<div id="top-notes"></div>
-
 <!-- main content -->
 <div id="content"></div>
 
 <!-- settings pane (hidden by default) -->
 <div id="settings-pane" style="display:none">
-  <div class="settings-grid">
 
-    <!-- 关注主题 -->
-    <div class="settings-panel">
-      <div class="section-title" style="margin-bottom:10px">关注主题</div>
-      <p style="color:var(--ink3);font-size:.72rem;margin-bottom:12px;line-height:1.6">
-        设置你正在关注的核心议题（对应活动备注），<br>收束精力与注意力焦点。
-      </p>
-      <div id="stopic-list"></div>
-      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-        <input id="topic-add-input" class="m-input" type="text" placeholder="新主题名称"
-               style="margin:0;flex:1" onkeydown="if(event.key==='Enter')addTopic()"/>
-        <button class="btn-add" onclick="addTopic()">+ 添加</button>
-      </div>
+  <!-- 子标签栏 -->
+  <div class="stab-row">
+    <button class="stab on" id="stab-timer" onclick="switchSTab('timer')">⏱ 计时设置</button>
+    <button class="stab"    id="stab-cats"  onclick="switchSTab('cats')">📂 分类与主题</button>
+  </div>
+
+  <!-- Tab 1: 计时设置 -->
+  <div id="stab-timer-pane" class="settings-panel" style="max-width:560px">
+    <div class="section-title" style="margin-bottom:10px">自动弹窗</div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+      <span style="font-size:.8rem;color:var(--ink2)">定时自动弹出记录提醒</span>
+      <button id="popup-toggle" onclick="toggleAutoPopup()"
+        style="padding:5px 18px;border-radius:20px;border:1.5px solid var(--crimson);
+               background:var(--crimson);color:#fff;font-size:.78rem;font-weight:700;
+               cursor:pointer;letter-spacing:.06em;transition:all .15s">开启</button>
     </div>
-
-    <!-- 弹窗间隔 -->
-    <div class="settings-panel" style="grid-column:1/-1;margin-bottom:0">
+    <div id="interval-section">
       <div class="section-title" style="margin-bottom:10px">弹窗间隔</div>
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <p style="color:var(--ink3);font-size:.72rem;margin:0">每隔多少分钟自动弹出记录提醒：</p>
@@ -496,24 +582,34 @@ body::before {
       </div>
       <p style="color:var(--ink3);font-size:.68rem;margin-top:8px">修改后立即对下一个计时周期生效，无需重启。</p>
     </div>
+  </div>
 
-    <!-- 活动分类 -->
-    <div class="settings-panel">
-      <div class="section-title" style="margin-bottom:10px">活动分类</div>
-      <p style="color:var(--ink3);font-size:.72rem;margin-bottom:12px;line-height:1.6">
-        管理弹窗中的一级分类。<br>点色点换颜色 · 直接改名后失焦保存。
-      </p>
-      <div id="scat-list"></div>
-      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-        <div id="add-dot" onclick="openCpicker(this,'__new__')"
-             style="width:16px;height:16px;border-radius:50%;background:var(--ink3);cursor:pointer;flex-shrink:0"></div>
-        <input id="add-input" class="m-input" type="text" placeholder="新分类名称"
-               style="margin:0;flex:1" onkeydown="if(event.key==='Enter')addCat()"/>
-        <button class="btn-add" onclick="addCat()">+ 添加</button>
+  <!-- Tab 2: 分类与主题（左右布局） -->
+  <div id="stab-cats-pane" style="display:none">
+    <div class="lr-layout">
+      <!-- 左栏：分类列表 -->
+      <div class="lr-left">
+        <div style="font-size:.68rem;color:var(--ink3);letter-spacing:.08em;margin-bottom:8px">活动分类</div>
+        <div id="cat-list-panel"></div>
+        <!-- 新增分类 -->
+        <div style="display:flex;gap:6px;margin-top:10px;align-items:center">
+          <div id="add-dot" onclick="openCpicker(this,'__new__')"
+               style="width:14px;height:14px;border-radius:50%;background:var(--ink3);cursor:pointer;flex-shrink:0"></div>
+          <input id="add-input" class="m-input" type="text" placeholder="新分类名称"
+                 style="margin:0;flex:1;font-size:.78rem;padding:5px 8px"
+                 onkeydown="if(event.key==='Enter')addCat()"/>
+          <button class="btn-add" style="padding:4px 10px;font-size:.75rem" onclick="addCat()">+ 添加</button>
+        </div>
+      </div>
+      <!-- 右栏：选中分类的关注主题 -->
+      <div class="lr-right">
+        <div id="topics-panel">
+          <div style="color:var(--ink3);font-size:.8rem;text-align:center;padding:24px 0">← 选择左侧分类查看关注主题</div>
+        </div>
       </div>
     </div>
-
   </div>
+
 </div>
 
 </div><!-- /wrap -->
@@ -610,7 +706,7 @@ body::before {
 /* ═══════════════════════════════
    STATE
    ═══════════════════════════════ */
-let CATS=[], COLORS={}, IV=20;
+let CATS=[], COLORS={}, IV=20, AUTO_POPUP=true, TOPIC_PRIORITIES={};
 let view='day', cur=today();
 let editId=null, editCat=null, editTimestamp=null;
 let cpTarget=null, cpOldName=null, newCatColor='#c8320a';
@@ -652,25 +748,40 @@ function lighten(hex){
    META
    ═══════════════════════════════ */
 async function loadMeta(){
-  const [d,ic]=await Promise.all([api('/api/meta'),api('/api/config/interval')]);
-  CATS=d.categories; COLORS=d.colors; IV=ic.interval||20;
+  const [d,ic,ap]=await Promise.all([api('/api/meta'),api('/api/config/interval'),api('/api/config/auto_popup')]);
+  CATS=d.categories; COLORS=d.colors; IV=ic.interval||20; AUTO_POPUP=ap.enabled!==false;
+  TOPIC_PRIORITIES=d.topic_priorities||{};
   const vb=document.getElementById('version-badge');
   if(vb&&d.version) vb.textContent=`v${d.version}`;
+}
+
+function prioBadge(note){
+  const p=TOPIC_PRIORITIES[note];
+  if(!p||p==='低') return '';
+  const cfg={'高':['#c8320a','高'],'中':['#b07a10','中']};
+  const [color,label]=cfg[p]||[];
+  if(!color) return '';
+  return `<span class="prio-badge" style="background:${color}">${label}</span>`;
 }
 
 /* ═══════════════════════════════
    TABS / NAV
    ═══════════════════════════════ */
-const DASH_ELS=['nav-row','manual-add-row','cat-summary','top-notes','content'];
 function setView(v){
   view=v;
-  const isSets=v==='settings';
-  ['day','week','month','settings'].forEach(x=>{
+  const isSets  = v==='settings';
+  const isTopic = v==='topic';
+  ['day','week','month','topic','settings'].forEach(x=>{
     document.getElementById('tab-'+x).className='tab'+(x===v?' on':'');
   });
-  DASH_ELS.forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display=isSets?'none':''; });
+  // nav-row / manual-add-row / cat-summary: 仅在 day/week/month 显示
+  ['nav-row','manual-add-row','cat-summary'].forEach(id=>{
+    const e=document.getElementById(id);
+    if(e) e.style.display=(isSets||isTopic)?'none':'';
+  });
+  document.getElementById('content').style.display=isSets?'none':'';
   document.getElementById('settings-pane').style.display=isSets?'block':'none';
-  if(isSets){ renderTopicsList(); renderScatList(); renderIntervalBtns(); }
+  if(isSets){ renderSTab1(); renderCatsTopics(); }
   else render();
 }
 function nav(dir){
@@ -695,44 +806,54 @@ function renderSummary(stats){
 }
 
 /* ═══════════════════════════════
-   FOCUS TOPICS (Top 5 on dashboard)
+   TOPIC VIEW (按主题 tab)
    ═══════════════════════════════ */
-async function renderFocusTopics(){
+async function renderTopic(){
+  const el=document.getElementById('content');
+  el.innerHTML='<div class="loading">✦ 詠唱中 · Loading ✦</div>';
   const all=await api('/api/focus_topics');
-  const el=document.getElementById('top-notes');
-  // top5: prefer those with actual activity, sorted by total_cnt desc
-  const top5=all.filter(t=>t.total_cnt>0).slice(0,5);
-  if(!top5.length){
-    if(!all.length){
-      el.innerHTML=`<div class="section-title" style="margin-bottom:8px">关注的主题 TOP 5</div>
-        <div style="color:var(--ink3);font-size:.78rem;text-align:center;padding:10px 0">
-          前往「⚙ 设置」添加关注主题</div>`;
-    } else {
-      el.innerHTML=`<div class="section-title" style="margin-bottom:8px">关注的主题 TOP 5</div>
-        <div style="color:var(--ink3);font-size:.78rem;text-align:center;padding:10px 0">
-          暂无活动数据匹配关注主题</div>`;
-    }
+  if(!all.length){
+    el.innerHTML=`<div class="empty-state">暂无关注主题<br>
+      <span style="font-size:.75rem;opacity:.6">前往「⚙ 设置 → 分类与主题」添加</span></div>`;
     return;
   }
-  const max=Math.max(1,...top5.map(t=>t.total_cnt));
-  el.innerHTML=`<div class="section-title" style="margin-bottom:8px">关注的主题 TOP 5</div>
-    <div style="margin-bottom:16px">
-      ${top5.map(t=>{
-        const pct=Math.round(t.total_cnt/max*100);
+
+  // 按分类分组，组内按 total_mins 降序
+  const groups={};
+  all.forEach(t=>{ const k=t.category||'未分类'; (groups[k]=groups[k]||[]).push(t); });
+  Object.values(groups).forEach(g=>g.sort((a,b)=>b.total_mins-a.total_mins));
+
+  const maxMins=Math.max(1,...all.map(t=>t.total_mins));
+
+  let html='';
+  for(const [catName,topics] of Object.entries(groups)){
+    const catColor=COLORS[catName]||'var(--ink3)';
+    html+=`<div style="margin-bottom:22px">
+      <div class="section-title" style="margin-bottom:10px;color:${catColor}">${esc(catName)}</div>
+      ${topics.map((t,i)=>{
+        const pct=Math.round(t.total_mins/maxMins*100);
         const badge=t.cnt_7d>0?`<span class="topic-badge">${t.cnt_7d}</span>`:'';
+        const rank=i+1;
+        const pb=prioBadge(t.name);
         return`<div class="tnote-row">
-          <div class="tnote-dot" style="background:var(--gold)"></div>
-          <div class="tnote-note">${esc(t.name)}${badge}</div>
-          <div class="tnote-bar-wrap"><div class="tnote-bar" style="background:var(--gold);width:${pct}%"></div></div>
+          <span style="font-size:.7rem;color:var(--ink3);width:16px;text-align:right;flex-shrink:0">${rank}</span>
+          <div class="tnote-dot" style="background:${catColor}"></div>
+          <div class="tnote-note">${esc(t.name)}${pb}${badge}</div>
+          <div class="tnote-bar-wrap"><div class="tnote-bar" style="background:${catColor};width:${pct}%"></div></div>
           <div class="tnote-cnt" style="color:var(--ink2)">${t.total_cnt}次</div>
           <div class="tnote-dur">${fmtDur(t.total_mins)}</div>
         </div>`;
       }).join('')}
     </div>`;
+  }
+  el.innerHTML=html;
 }
 
+/* 兼容 settings 面板里仍调用 renderFocusTopics 的地方 */
+async function renderFocusTopics(){ if(view==='topic') await renderTopic(); }
+
 /* ═══════════════════════════════
-   DAY VIEW
+   DAY VIEW — 流水账
    ═══════════════════════════════ */
 async function renderDay(){
   const start=fd(cur),end=fd(new Date(cur.getTime()+86400000));
@@ -744,26 +865,52 @@ async function renderDay(){
     api(`/api/category_stats?start=${start}&end=${end}`),
   ]);
   renderSummary(stats);
-  await renderFocusTopics();
 
   const el=document.getElementById('content');
   if(!acts.length){
     el.innerHTML='<div class="empty-state">光よ、闇を照らせ！<br><span style="font-size:.75rem;opacity:.6">本日はまだ記録なし ·· No quests today</span></div>';
     return;
   }
-  el.innerHTML=`<div class="row-cnt">${acts.length} 条冒険記録</div>
-    <div>${acts.map(a=>{
+
+  // 每条记录的实际/推算时长（分钟）
+  function actMins(a){
+    if(a.end_time) return Math.max(1,Math.round((new Date(a.end_time)-new Date(a.timestamp))/60000));
+    return IV;
+  }
+  // 推算结束时间字符串（用于显示）
+  function calcEndISO(a){
+    if(a.end_time) return a.end_time;
+    return new Date(new Date(a.timestamp).getTime()+IV*60000).toISOString();
+  }
+
+  // 每个 note：累计分钟数 & 最后一条的索引
+  const noteCum={}, noteLastIdx={};
+  acts.forEach((a,i)=>{
+    noteCum[a.note]=(noteCum[a.note]||0)+actMins(a);
+    noteLastIdx[a.note]=i;
+  });
+
+  el.innerHTML=`<div class="row-cnt">${acts.length} 条记录</div>
+    <div>${acts.map((a,i)=>{
       const c=cc(a.category),
             sn=esc(a.note).replace(/'/g,"&#39;"),
             sc=esc(a.category).replace(/'/g,"&#39;"),
             ts=a.timestamp, et=a.end_time||'';
-      const dur=actDur(a);
+      const estimated=!a.end_time;
+      const endISO=calcEndISO(a);
+      const endLabel=fmtT(endISO);
+      const isLast=noteLastIdx[a.note]===i;
+      const cumHtml=isLast
+        ?`<span style="font-size:.68rem;color:var(--gold);font-weight:700;white-space:nowrap;margin-left:auto">累计 ${fmtDurEn(noteCum[a.note])}</span>`
+        :`<span style="margin-left:auto"></span>`;
       return`<div class="act-row" style="border-left-color:${c}"
                onclick="openEdit(${a.id},'${sc}','${sn}','${ts}','${et}')">
-        <span class="act-time">${fmtT(a.timestamp)}</span>
+        <span class="act-time">${fmtT(ts)}</span>
+        <span style="font-size:.72rem;color:var(--ink3);margin:0 3px">—</span>
+        <span class="act-time${estimated?' est-time':''}" title="${estimated?'按弹窗间隔推算':'实际结束时间'}">${endLabel}${estimated?'*':''}</span>
         <span class="cat-pill" style="color:${c}">${esc(a.category)}</span>
-        <span class="act-note">${esc(a.note)}</span>
-        <span style="font-size:.7rem;color:var(--ink3);margin-left:auto;white-space:nowrap">${fmtDurEn(dur)}</span>
+        <span class="act-note">${esc(a.note)}</span>${prioBadge(a.note)}
+        ${cumHtml}
         <button class="edit-btn" onclick="openEdit(${a.id},'${sc}','${sn}','${ts}','${et}');event.stopPropagation()">✎</button>
       </div>`;
     }).join('')}</div>`;
@@ -787,7 +934,6 @@ async function renderWeek(){
     api(`/api/category_stats?start=${start}&end=${end}`),
   ]);
   renderSummary(stats);
-  await renderFocusTopics();
 
   const byDay={};
   acts.forEach(a=>{const k=a.timestamp.slice(0,10);(byDay[k]=byDay[k]||[]).push(a);});
@@ -821,7 +967,7 @@ async function renderWeek(){
                  onclick="openEdit(${a.id},'${sc}','${sn}','${ts}','${et}')">
           <span class="act-time">${fmtT(a.timestamp)}</span>
           <span class="cat-pill" style="color:${c}">${esc(a.category)}</span>
-          <span class="act-note">${esc(a.note)}</span>
+          <span class="act-note">${esc(a.note)}</span>${prioBadge(a.note)}
           <span style="font-size:.7rem;color:var(--ink3);margin-left:auto;white-space:nowrap">${fmtDurEn(actDur(a))}</span>
           <button class="edit-btn" onclick="openEdit(${a.id},'${sc}','${sn}','${ts}','${et}');event.stopPropagation()">✎</button>
         </div>`;}).join('')}</div>`
@@ -846,7 +992,6 @@ async function renderMonth(){
     api(`/api/category_stats?start=${start}&end=${end}`),
   ]);
   renderSummary(stats);
-  await renderFocusTopics();
 
   const maxC=Math.max(1,...Object.values(cal));
   const tStr=fd(today());
@@ -1020,19 +1165,163 @@ async function applyInterval(mins){
 }
 
 /* ═══════════════════════════════
-   SETTINGS — CATEGORY LIST
+   SETTINGS — SUB-TABS
    ═══════════════════════════════ */
-async function renderScatList(){
-  const cats=await api('/api/categories');
-  document.getElementById('scat-list').innerHTML=cats.map(cat=>{
+function switchSTab(tab){
+  ['timer','cats'].forEach(t=>{
+    document.getElementById('stab-'+t).className='stab'+(t===tab?' on':'');
+    document.getElementById('stab-'+t+'-pane').style.display=t===tab?'':'none';
+  });
+}
+
+async function renderSTab1(){
+  const ap=await api('/api/config/auto_popup');
+  AUTO_POPUP=ap.enabled!==false;
+  _applyPopupToggleUI();
+  renderIntervalBtns();
+}
+
+function _applyPopupToggleUI(){
+  const btn=document.getElementById('popup-toggle');
+  if(!btn)return;
+  if(AUTO_POPUP){
+    btn.textContent='开启';
+    btn.style.background='var(--crimson)';btn.style.borderColor='var(--crimson)';btn.style.color='#fff';
+  } else {
+    btn.textContent='关闭';
+    btn.style.background='transparent';btn.style.borderColor='var(--ink3)';btn.style.color='var(--ink3)';
+  }
+  const intSec=document.getElementById('interval-section');
+  if(intSec) intSec.style.opacity=AUTO_POPUP?'1':'0.4';
+}
+
+async function toggleAutoPopup(){
+  AUTO_POPUP=!AUTO_POPUP;
+  await api('/api/config/auto_popup',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:AUTO_POPUP})});
+  _applyPopupToggleUI();
+}
+
+/* ═══════════════════════════════
+   SETTINGS — CATS + TOPICS (左右布局)
+   ═══════════════════════════════ */
+let _selectedCat=null;
+let _allCats=[], _allTopics=[];
+
+async function renderCatsTopics(){
+  [_allCats,_allTopics]=await Promise.all([api('/api/categories'),api('/api/focus_topics')]);
+  _renderCatList();
+  _renderTopicsPanel();
+}
+
+function _renderCatList(){
+  const el=document.getElementById('cat-list-panel');
+  if(!el)return;
+  // count topics per cat (include unassigned)
+  const cnt={};
+  _allTopics.forEach(t=>{ const k=t.category||''; cnt[k]=(cnt[k]||0)+1; });
+
+  let html=_allCats.map(cat=>{
     const sn=esc(cat.name).replace(/'/g,"&#39;");
-    return`<div class="scat-row">
-      <div class="scat-dot" style="background:${cat.color}" onclick="openCpicker(this,'${sn}')"></div>
-      <input class="scat-name" value="${sn}" data-orig="${sn}"
-             onblur="renameCat(this)" onkeydown="if(event.key==='Enter')this.blur()"/>
-      <button class="scat-del" onclick="deleteCat('${sn}')">✕</button>
+    const sel=_selectedCat===cat.name;
+    const n=cnt[cat.name]||0;
+    return`<div class="cat-list-item${sel?' selected':''}" onclick="selectCat('${sn}')">
+      <div class="cat-dot" style="background:${cat.color}"></div>
+      <span class="cat-item-name" style="color:${cat.color}">${esc(cat.name)}</span>
+      <span class="cat-item-cnt">${n?n+'个':''}</span>
+      <div class="cat-actions">
+        <button class="cat-action-btn" title="改颜色" onclick="event.stopPropagation();openCpicker(this.closest('.cat-list-item').querySelector('.cat-dot'),'${sn}')">⬤</button>
+        <button class="cat-action-btn" title="删除" onclick="event.stopPropagation();deleteCat('${sn}')">✕</button>
+      </div>
     </div>`;
   }).join('');
+
+  // 未分类
+  const uncat=cnt['']||0;
+  if(uncat>0){
+    const sel=_selectedCat==='';
+    html+=`<div class="cat-list-item${sel?' selected':''}" onclick="selectCat('')"
+      style="opacity:.7">
+      <div class="cat-dot" style="background:var(--ink3)"></div>
+      <span class="cat-item-name" style="color:var(--ink3)">未分类</span>
+      <span class="cat-item-cnt">${uncat}个</span>
+    </div>`;
+  }
+  el.innerHTML=html;
+
+  // 同步颜色选择器 target（重新绑定 .cat-dot 元素）
+  _allCats.forEach(cat=>{
+    const dots=el.querySelectorAll(`.cat-dot`);
+    // handled via openCpicker call above
+  });
+}
+
+function selectCat(name){
+  _selectedCat=name;
+  _renderCatList();
+  _renderTopicsPanel();
+}
+
+function _renderTopicsPanel(){
+  const el=document.getElementById('topics-panel');
+  if(!el)return;
+  if(_selectedCat===null){
+    el.innerHTML='<div style="color:var(--ink3);font-size:.8rem;text-align:center;padding:24px 0">← 选择左侧分类查看关注主题</div>';
+    return;
+  }
+  const cat=_allCats.find(c=>c.name===_selectedCat);
+  const color=cat?cat.color:'var(--ink3)';
+  const catTopics=_allTopics.filter(t=>(t.category||'')===_selectedCat);
+  const otherCats=_allCats.filter(c=>c.name!==_selectedCat).map(c=>c.name);
+
+  const catLabel=_selectedCat===''?'未分类':esc(_selectedCat);
+  const sn=esc(_selectedCat).replace(/'/g,"&#39;");
+
+  // 分类标题行（可改名，非"未分类"）
+  let header='';
+  if(_selectedCat!==''){
+    header=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1.5px solid var(--border)">
+      <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0"></div>
+      <input class="scat-name" style="flex:1;font-size:.88rem;font-weight:700" value="${sn}" data-orig="${sn}"
+             onblur="renameCat(this)" onkeydown="if(event.key==='Enter')this.blur()"/>
+    </div>`;
+  } else {
+    header=`<div style="font-size:.82rem;font-weight:700;color:var(--ink3);margin-bottom:12px;padding-bottom:8px;border-bottom:1.5px solid var(--border)">未分类主题</div>`;
+  }
+
+  const rows=catTopics.map(t=>{
+    const tn=esc(t.name).replace(/'/g,"&#39;");
+    const opts=(_selectedCat===''?_allCats:otherCats).map(c=>`<option value="${esc(c.name||c).replace(/'/g,"&#39;")}">${esc(c.name||c)}</option>`).join('');
+    const prio=t.priority||'中';
+    const prioButtons=['高','中','低'].map(p=>`<button class="prio-btn${prio===p?' active-'+p:''}"
+      onclick="setPriority(${t.id},'${p}','${esc(_selectedCat).replace(/'/g,"&#39;")}')">${p}</button>`).join('');
+    return`<div class="topic-row" style="flex-wrap:wrap;gap:4px">
+      <input class="topic-name" value="${tn}" data-id="${t.id}" data-orig="${tn}"
+             onblur="renameTopic(this)" onkeydown="if(event.key==='Enter')this.blur()"/>
+      <div style="display:flex;gap:3px;flex-shrink:0">${prioButtons}</div>
+      <span style="font-size:.65rem;color:var(--ink3);white-space:nowrap">${t.cnt_7d}次/周</span>
+      <select class="topic-reassign" title="迁移到其他分类"
+              onchange="reassignTopic(${t.id},'${tn}','${sn}',this)">
+        <option value="">迁移到…</option>${opts}
+      </select>
+      <button class="topic-del" onclick="deleteTopic(${t.id},'${tn}')">✕</button>
+    </div>`;
+  }).join('');
+
+  const emptyHint=catTopics.length===0
+    ?`<div style="color:var(--ink3);font-size:.78rem;padding:8px 0 12px">此分类下暂无关注主题</div>`:'';
+
+  // 添加主题行
+  const addRow=_selectedCat!==''?`<div style="display:flex;gap:6px;margin-top:10px;align-items:center">
+    <input class="m-input topic-new-input" type="text" placeholder="新主题名称"
+           style="margin:0;flex:1;font-size:.8rem;padding:5px 8px"
+           data-cat="${sn}"
+           onkeydown="if(event.key==='Enter')addTopic(this)"/>
+    <button class="btn-add" style="padding:5px 12px;font-size:.78rem"
+            onclick="addTopic(this.previousElementSibling)">+ 添加</button>
+  </div>`:'';
+
+  el.innerHTML=header+rows+emptyHint+addRow;
 }
 
 async function renameCat(input){
@@ -1041,14 +1330,20 @@ async function renameCat(input){
   const r=await api('/api/categories/update',{method:'POST',
     headers:{'Content-Type':'application/json'},body:JSON.stringify({old_name:old,new_name:nw})});
   if(r.error){alert(r.error);input.value=old;return;}
-  input.dataset.orig=nw;await reloadMeta();
+  if(_selectedCat===old) _selectedCat=nw;
+  input.dataset.orig=nw;
+  await reloadMeta();renderCatsTopics();
 }
 async function deleteCat(name){
-  if(!confirm(`删除分类「${name}」？历史记录保留原名不受影响。`))return;
+  if(!confirm(`删除分类「${name}」？该分类下的关注主题也将被移除，历史活动记录保留原分类名。`))return;
+  for(const t of _allTopics.filter(t=>t.category===name)){
+    await api(`/api/focus_topics/${t.id}`,{method:'DELETE'});
+  }
   const r=await api('/api/categories/delete',{method:'POST',
     headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
   if(r.error){alert(r.error);return;}
-  await reloadMeta();renderScatList();
+  if(_selectedCat===name) _selectedCat=null;
+  await reloadMeta();renderCatsTopics();
 }
 async function addCat(){
   const name=document.getElementById('add-input').value.trim();
@@ -1059,9 +1354,62 @@ async function addCat(){
   document.getElementById('add-input').value='';
   newCatColor=PALETTE[0];
   document.getElementById('add-dot').style.background='var(--ink3)';
-  await reloadMeta();renderScatList();
+  _selectedCat=name;
+  await reloadMeta();renderCatsTopics();
 }
 async function reloadMeta(){await loadMeta();if(view!=='settings')render();}
+
+async function addTopic(inputEl){
+  const name=inputEl.value.trim();
+  const cat=inputEl.dataset.cat||'';
+  if(!name)return;
+  const r=await api('/api/focus_topics',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({name,category:cat})});
+  if(r.error){alert(r.error);return;}
+  inputEl.value='';
+  await renderCatsTopics();
+  renderFocusTopics();
+}
+
+async function renameTopic(input){
+  const old=input.dataset.orig,nw=input.value.trim(),id=input.dataset.id;
+  if(!nw){input.value=old;return;}if(nw===old)return;
+  const r=await api(`/api/focus_topics/${id}`,{method:'PUT',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({name:nw})});
+  if(r.error){alert(r.error);input.value=old;return;}
+  input.dataset.orig=nw;
+  renderFocusTopics();
+}
+
+async function deleteTopic(id,name){
+  if(!confirm(`删除主题「${name}」？历史统计数据不受影响。`))return;
+  await api(`/api/focus_topics/${id}`,{method:'DELETE'});
+  await renderCatsTopics(); renderFocusTopics();
+}
+
+async function setPriority(id, priority, catName){
+  const r=await api(`/api/focus_topics/${id}`,{method:'PUT',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({priority})});
+  if(r.error){alert(r.error);return;}
+  if(r.downgraded&&r.downgraded.length>0){
+    alert(`「${r.downgraded.join('、')}」已从高优先改为中优先。\n每个分类只能有一个高优先主题。`);
+  }
+  await reloadMeta(); renderCatsTopics(); renderFocusTopics();
+}
+
+async function reassignTopic(id,name,currentCat,selectEl){
+  const newCat=selectEl.value;
+  if(!newCat){return;}
+  if(!confirm(`将「${name}」迁移到「${newCat}」？\n历史记录中所有该主题的活动将同步更新分类，此操作不可撤销。`)){
+    selectEl.value='';return;
+  }
+  const r=await api(`/api/focus_topics/${id}`,{method:'PUT',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({category:newCat})});
+  if(r.error){alert(r.error);selectEl.value='';return;}
+  if(r.migrated>0) alert(`已迁移 ${r.migrated} 条历史记录到「${newCat}」。`);
+  _selectedCat=newCat;
+  await renderCatsTopics(); renderFocusTopics();
+}
 
 /* ═══════════════════════════════
    COLOR PICKER
@@ -1096,51 +1444,6 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeEdit();closeManualAdd();}
 });
 
-/* ═══════════════════════════════
-   SETTINGS — TOPICS LIST
-   ═══════════════════════════════ */
-async function renderTopicsList(){
-  const topics=await api('/api/focus_topics');
-  document.getElementById('stopic-list').innerHTML=topics.length
-    ? topics.map(t=>{
-        const sn=esc(t.name).replace(/'/g,"&#39;");
-        return`<div class="stopic-row">
-          <input class="stopic-name" value="${sn}" data-id="${t.id}" data-orig="${sn}"
-                 onblur="renameTopic(this)" onkeydown="if(event.key==='Enter')this.blur()"/>
-          <span style="font-size:.68rem;color:var(--ink3);white-space:nowrap">近7天:${t.cnt_7d}次</span>
-          <button class="stopic-del" onclick="deleteTopic(${t.id},'${sn}')">✕</button>
-        </div>`;
-      }).join('')
-    : `<div style="color:var(--ink3);font-size:.8rem;text-align:center;padding:12px 0">暂无主题</div>`;
-}
-
-async function renameTopic(input){
-  const old=input.dataset.orig, nw=input.value.trim(), id=input.dataset.id;
-  if(!nw){input.value=old;return;} if(nw===old)return;
-  const r=await api(`/api/focus_topics/${id}`,{method:'PUT',
-    headers:{'Content-Type':'application/json'},body:JSON.stringify({name:nw})});
-  if(r.error){alert(r.error);input.value=old;return;}
-  input.dataset.orig=nw;
-  renderFocusTopics();
-}
-
-async function deleteTopic(id, name){
-  if(!confirm(`删除主题「${name}」？历史统计数据不受影响。`))return;
-  await api(`/api/focus_topics/${id}`,{method:'DELETE'});
-  await renderTopicsList();
-  renderFocusTopics();
-}
-
-async function addTopic(){
-  const name=document.getElementById('topic-add-input').value.trim();
-  if(!name)return;
-  const r=await api('/api/focus_topics',{method:'POST',
-    headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
-  if(r.error){alert(r.error);return;}
-  document.getElementById('topic-add-input').value='';
-  await renderTopicsList();
-  renderFocusTopics();
-}
 
 /* ═══════════════════════════════
    MANUAL ADD
@@ -1252,11 +1555,11 @@ async function submitManualAdd(){
 async function render(){
   document.getElementById('content').innerHTML='<div class="loading">✦ 詠唱中 · Loading ✦</div>';
   document.getElementById('cat-summary').innerHTML='';
-  document.getElementById('top-notes').innerHTML='';
   try{
-    if(view==='day')      await renderDay();
-    else if(view==='week')await renderWeek();
-    else                  await renderMonth();
+    if(view==='day')        await renderDay();
+    else if(view==='week')  await renderWeek();
+    else if(view==='topic') await renderTopic();
+    else                    await renderMonth();
   }catch(e){
     document.getElementById('content').innerHTML=
       `<div class="empty-state">Dragon Slave!! 読み込み失敗<br><span style="font-size:.72rem">${e.message}</span></div>`;

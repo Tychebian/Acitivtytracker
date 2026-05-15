@@ -8,7 +8,7 @@ from flask import Flask, jsonify, render_template, request
 
 sys.path.insert(0, str(Path(__file__).parent))
 from datetime import datetime
-from db import DB_PATH, init_db, get_focus_topics_with_stats
+from db import DB_PATH, init_db, get_focus_topics_with_stats, migrate_topic_category, get_focus_topics_by_category
 import config as cfg
 
 PORT = 5001
@@ -35,11 +35,13 @@ def index():
 
 @app.route("/api/meta")
 def api_meta():
-    cats = cfg.get_categories()
+    cats   = cfg.get_categories()
+    topics = get_focus_topics_with_stats()
     return jsonify({
-        "categories": [c["name"] for c in cats],
-        "colors":     {c["name"]: c["color"] for c in cats},
-        "version":    cfg.__version__,
+        "categories":       [c["name"] for c in cats],
+        "colors":           {c["name"]: c["color"] for c in cats},
+        "topic_priorities": {t["name"]: t["priority"] for t in topics},
+        "version":          cfg.__version__,
     })
 
 
@@ -98,6 +100,15 @@ def api_cat_delete():
 
 
 # ── activities ────────────────────────────────────────────────────────────────
+
+@app.route("/api/config/auto_popup", methods=["GET", "POST"])
+def api_auto_popup():
+    if request.method == "POST":
+        data = request.get_json(force=True)
+        cfg.set_auto_popup(bool(data.get("enabled", True)))
+        return jsonify({"ok": True})
+    return jsonify({"enabled": cfg.get_auto_popup()})
+
 
 @app.route("/api/config/interval", methods=["GET", "POST"])
 def api_interval():
@@ -186,28 +197,72 @@ def api_focus_topics_list():
 
 @app.route("/api/focus_topics", methods=["POST"])
 def api_focus_topic_add():
-    name = (request.get_json(force=True).get("name") or "").strip()
+    data     = request.get_json(force=True)
+    name     = (data.get("name") or "").strip()
+    category = (data.get("category") or "").strip()
+    priority = (data.get("priority") or "中").strip()
+    if priority not in ("高", "中", "低"):
+        priority = "中"
     if not name:
         return jsonify({"error": "name required"}), 400
+    # 高优先级：同分类只能一个，新增时先降级旧的
+    downgraded = []
+    if priority == "高" and category:
+        with sqlite3.connect(DB_PATH) as conn:
+            rows = conn.execute(
+                "SELECT id, name FROM focus_topics WHERE category=? AND priority='高'",
+                (category,),
+            ).fetchall()
+            for row in rows:
+                conn.execute("UPDATE focus_topics SET priority='中' WHERE id=?", (row[0],))
+                downgraded.append(row[1])
     try:
         with sqlite3.connect(DB_PATH) as conn:
             conn.execute(
-                "INSERT INTO focus_topics (name, created_at) VALUES (?, ?)",
-                (name, datetime.now().isoformat(timespec="seconds")),
+                "INSERT INTO focus_topics (name, category, priority, created_at) VALUES (?, ?, ?, ?)",
+                (name, category, priority, datetime.now().isoformat(timespec="seconds")),
             )
-        return jsonify({"ok": True})
+        return jsonify({"ok": True, "downgraded": downgraded})
     except sqlite3.IntegrityError:
         return jsonify({"error": "already exists"}), 409
 
 
 @app.route("/api/focus_topics/<int:tid>", methods=["PUT"])
 def api_focus_topic_update(tid):
-    name = (request.get_json(force=True).get("name") or "").strip()
-    if not name:
-        return jsonify({"error": "name required"}), 400
+    data     = request.get_json(force=True)
+    name     = (data.get("name") or "").strip()
+    category = (data.get("category") or "").strip()
+    priority = (data.get("priority") or "").strip()
+    migrated = 0
+    downgraded = []
+
     with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("UPDATE focus_topics SET name=? WHERE id=?", (name, tid))
-    return jsonify({"ok": True})
+        if name:
+            conn.execute("UPDATE focus_topics SET name=? WHERE id=?", (name, tid))
+        if priority:
+            if priority not in ("高", "中", "低"):
+                return jsonify({"error": "invalid priority"}), 400
+            # 高：同分类只能一个，先降级其他高优先级主题
+            if priority == "高":
+                row = conn.execute("SELECT category FROM focus_topics WHERE id=?", (tid,)).fetchone()
+                if row:
+                    cat = row[0]
+                    others = conn.execute(
+                        "SELECT id, name FROM focus_topics WHERE category=? AND priority='高' AND id!=?",
+                        (cat, tid),
+                    ).fetchall()
+                    for r in others:
+                        conn.execute("UPDATE focus_topics SET priority='中' WHERE id=?", (r[0],))
+                        downgraded.append(r[1])
+            conn.execute("UPDATE focus_topics SET priority=? WHERE id=?", (priority, tid))
+
+    if category:
+        try:
+            migrated = migrate_topic_category(tid, category)
+        except KeyError as e:
+            return jsonify({"error": str(e)}), 404
+
+    return jsonify({"ok": True, "migrated": migrated, "downgraded": downgraded})
 
 
 @app.route("/api/focus_topics/<int:tid>", methods=["DELETE"])

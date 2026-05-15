@@ -129,7 +129,7 @@ def api_activities():
     if not start or not end:
         return jsonify({"error": "start and end required"}), 400
     rows = _q(
-        "SELECT id,timestamp,end_time,category,note FROM activities "
+        "SELECT id,timestamp,end_time,category,note,detail FROM activities "
         "WHERE timestamp>=? AND timestamp<? ORDER BY timestamp ASC",
         (start, end),
     )
@@ -304,11 +304,14 @@ def api_act_update(aid):
     category = (data.get("category") or "").strip()
     note     = (data.get("note") or "").strip()
     end_time = (data.get("end_time") or "").strip() or None
+    detail   = data.get("detail")  # may be None or ""
+    if detail is not None:
+        detail = detail.strip() or None
     if not category:
         return jsonify({"error": "category required"}), 400
     with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("UPDATE activities SET category=?,note=?,end_time=? WHERE id=?",
-                     (category, note, end_time, aid))
+        conn.execute("UPDATE activities SET category=?,note=?,end_time=?,detail=? WHERE id=?",
+                     (category, note, end_time, detail, aid))
     return jsonify({"ok": True})
 
 
@@ -317,6 +320,119 @@ def api_act_delete(aid):
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("DELETE FROM activities WHERE id=?", (aid,))
     return jsonify({"ok": True})
+
+
+@app.route("/api/export")
+def api_export():
+    from flask import Response
+    start = request.args.get("start", "")
+    end   = request.args.get("end", "")
+    if not start or not end:
+        return jsonify({"error": "start and end required"}), 400
+
+    iv = cfg.get_interval()
+    topics = {t["name"]: t for t in get_focus_topics_with_stats()}
+    prio_label = {"高": "★高", "中": "◆中", "低": "▽低"}
+
+    acts = _q(
+        "SELECT id,timestamp,end_time,category,note,detail FROM activities "
+        "WHERE timestamp>=? AND timestamp<? ORDER BY timestamp ASC",
+        (start, end + "T23:59:59"),
+    )
+
+    # ── helpers ───────────────────────────────────────────────
+    def dur_mins(a):
+        if a["end_time"]:
+            from datetime import datetime as _dt
+            diff = (_dt.fromisoformat(a["end_time"]) - _dt.fromisoformat(a["timestamp"])).total_seconds()
+            return max(1, int(diff / 60))
+        return iv
+
+    def fmt_dur(mins):
+        if mins < 60:
+            return f"{mins}分钟"
+        h, m = divmod(mins, 60)
+        return f"{h}小时{m}分钟" if m else f"{h}小时"
+
+    def fmt_time(iso):
+        return iso[11:16] if iso else "—"
+
+    # ── group by date ─────────────────────────────────────────
+    from collections import defaultdict
+    by_date = defaultdict(list)
+    for a in acts:
+        by_date[a["timestamp"][:10]].append(a)
+
+    # ── summary stats ─────────────────────────────────────────
+    cat_stats = defaultdict(lambda: {"cnt": 0, "mins": 0})
+    note_stats = defaultdict(lambda: {"cnt": 0, "mins": 0})
+    for a in acts:
+        m = dur_mins(a)
+        cat_stats[a["category"]]["cnt"] += 1
+        cat_stats[a["category"]]["mins"] += m
+        note_stats[a["note"]]["cnt"] += 1
+        note_stats[a["note"]]["mins"] += m
+
+    total_cnt  = len(acts)
+    total_mins = sum(dur_mins(a) for a in acts)
+
+    weekdays = "一二三四五六日"
+
+    # ── build markdown ────────────────────────────────────────
+    lines = [
+        "# ActivityTracker 活动导出",
+        f"**日期范围**：{start} 至 {end}  ",
+        f"**导出时间**：{datetime.now().strftime('%Y-%m-%d %H:%M')}",
+        "",
+        "---",
+        "",
+        "## 汇总",
+        "",
+        f"- **总记录**：{total_cnt} 条 · **总时长**：{fmt_dur(total_mins)}",
+        "",
+        "| 分类 | 次数 | 累计时长 |",
+        "|------|------|---------|",
+    ]
+    for cat, s in sorted(cat_stats.items(), key=lambda x: -x[1]["mins"]):
+        lines.append(f"| {cat} | {s['cnt']} | {fmt_dur(s['mins'])} |")
+
+    high_topics = [n for n, t in topics.items() if t.get("priority") == "高" and note_stats[n]["cnt"] > 0]
+    if high_topics:
+        lines += ["", f"**高优先主题**：{'、'.join(high_topics)}"]
+
+    lines += ["", "---", "", "## 每日记录", ""]
+
+    for date_str in sorted(by_date.keys()):
+        from datetime import date as _date
+        d = _date.fromisoformat(date_str)
+        wd = weekdays[d.weekday()]
+        day_acts = by_date[date_str]
+        day_mins = sum(dur_mins(a) for a in day_acts)
+
+        lines.append(f"### {date_str}（周{wd}）· {len(day_acts)}条 · {fmt_dur(day_mins)}")
+        lines.append("")
+
+        # group by category within day
+        cat_groups = defaultdict(list)
+        for a in day_acts:
+            cat_groups[a["category"]].append(a)
+
+        for cat, cat_acts in cat_groups.items():
+            cat_mins = sum(dur_mins(a) for a in cat_acts)
+            lines.append(f"**{cat}**（{len(cat_acts)}次 · {fmt_dur(cat_mins)}）")
+            for a in cat_acts:
+                t = topics.get(a["note"], {})
+                prio = prio_label.get(t.get("priority", ""), "")
+                prio_str = f" [{prio}]" if prio else ""
+                end_str = fmt_time(a["end_time"]) if a["end_time"] else f"~{fmt_time(str(datetime.fromisoformat(a['timestamp']) + __import__('datetime').timedelta(minutes=iv)))}"
+                line = f"- `{fmt_time(a['timestamp'])}–{end_str}`{prio_str} **{a['note']}**"
+                if a.get("detail"):
+                    line += f"  \n  > {a['detail']}"
+                lines.append(line)
+            lines.append("")
+
+    md = "\n".join(lines)
+    return Response(md, mimetype="text/plain; charset=utf-8")
 
 
 if __name__ == "__main__":

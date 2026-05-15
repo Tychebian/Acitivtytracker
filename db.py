@@ -26,6 +26,8 @@ def init_db():
             )
         if "end_time" not in cols:
             conn.execute("ALTER TABLE activities ADD COLUMN end_time TEXT")
+        if "detail" not in cols:
+            conn.execute("ALTER TABLE activities ADD COLUMN detail TEXT")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS focus_topics (
                 id         INTEGER PRIMARY KEY AUTOINCREMENT,

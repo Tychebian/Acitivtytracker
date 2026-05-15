@@ -423,6 +423,18 @@ body::before {
 /* 推算结束时间（淡色 + 斜体表示非实际值） */
 .est-time { color: var(--ink3) !important; font-style: italic; }
 
+/* 行内 detail 备注 */
+.act-detail-row { padding: 0 10px 6px 14px; }
+.act-detail-input {
+  width: 100%; border: none; background: transparent;
+  font-size: .75rem; color: var(--ink2); padding: 2px 0;
+  border-bottom: 1px dashed transparent; transition: border-color .15s;
+  outline: none; font-family: inherit;
+}
+.act-detail-input::placeholder { color: var(--ink3); opacity: .5; }
+.act-detail-input:hover { border-bottom-color: var(--border); }
+.act-detail-input:focus { border-bottom-color: var(--gold); color: var(--ink); }
+
 /* 优先级徽章 */
 .prio-badge {
   display: inline-block; font-size: .6rem; font-weight: 700;
@@ -548,8 +560,9 @@ body::before {
 
   <!-- 子标签栏 -->
   <div class="stab-row">
-    <button class="stab on" id="stab-timer" onclick="switchSTab('timer')">⏱ 计时设置</button>
-    <button class="stab"    id="stab-cats"  onclick="switchSTab('cats')">📂 分类与主题</button>
+    <button class="stab on" id="stab-timer"  onclick="switchSTab('timer')">⏱ 计时设置</button>
+    <button class="stab"    id="stab-cats"   onclick="switchSTab('cats')">📂 分类与主题</button>
+    <button class="stab"    id="stab-export" onclick="switchSTab('export')">📤 导出</button>
   </div>
 
   <!-- Tab 1: 计时设置 -->
@@ -581,6 +594,37 @@ body::before {
         <span id="interval-status" style="font-size:.72rem;color:var(--ink3)"></span>
       </div>
       <p style="color:var(--ink3);font-size:.68rem;margin-top:8px">修改后立即对下一个计时周期生效，无需重启。</p>
+    </div>
+  </div>
+
+  <!-- Tab 3: 导出 -->
+  <div id="stab-export-pane" class="settings-panel" style="display:none;max-width:560px">
+    <div class="section-title" style="margin-bottom:10px">导出活动记录</div>
+    <p style="color:var(--ink3);font-size:.72rem;margin-bottom:16px;line-height:1.6">
+      选择日期范围，导出 Markdown 格式的活动记录，<br>可直接粘贴给 ChatGPT / Claude / Gemini 做进一步分析。
+    </p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <label style="font-size:.78rem;color:var(--ink2)">开始日期</label>
+      <input id="export-start" type="date" class="m-input" style="margin:0;width:150px;padding:5px 8px"/>
+      <label style="font-size:.78rem;color:var(--ink2)">结束日期</label>
+      <input id="export-end"   type="date" class="m-input" style="margin:0;width:150px;padding:5px 8px"/>
+      <button class="btn-save" style="padding:6px 16px" onclick="generateExport()">生成</button>
+    </div>
+    <div id="export-quick-btns" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn-add" style="padding:4px 12px;font-size:.75rem" onclick="setExportRange(7)">最近 7 天</button>
+      <button class="btn-add" style="padding:4px 12px;font-size:.75rem" onclick="setExportRange(30)">最近 30 天</button>
+      <button class="btn-add" style="padding:4px 12px;font-size:.75rem" onclick="setExportThisMonth()">本月</button>
+    </div>
+    <div id="export-result" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span id="export-info" style="font-size:.72rem;color:var(--ink3)"></span>
+        <button class="btn-save" style="padding:5px 14px;font-size:.78rem" onclick="copyExport()">📋 复制全文</button>
+      </div>
+      <textarea id="export-text" readonly
+        style="width:100%;height:280px;font-size:.72rem;font-family:monospace;
+               background:var(--parch3);border:1px solid var(--border);border-radius:6px;
+               padding:10px;color:var(--ink);resize:vertical;box-sizing:border-box;line-height:1.5">
+      </textarea>
     </div>
   </div>
 
@@ -641,6 +685,12 @@ body::before {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
       <div id="edit-duration" style="font-size:.78rem;color:var(--ink3)"></div>
       <button onclick="clearEndTime()" style="background:none;border:none;font-size:.7rem;color:var(--ink3);cursor:pointer;padding:2px 6px;border-radius:3px" onmouseover="this.style.color='var(--crimson)'" onmouseout="this.style.color='var(--ink3)'">清除结束时间</button>
+    </div>
+
+    <div style="margin-top:12px">
+      <div style="font-size:.68rem;color:var(--ink3);letter-spacing:.06em;margin-bottom:4px">具体做了什么（可选）</div>
+      <textarea id="edit-detail" class="m-input" rows="2" placeholder="在这个专注主题下具体干了什么…"
+        style="margin:0;resize:vertical;font-size:.82rem;line-height:1.5"></textarea>
     </div>
 
     <div class="m-btn-row">
@@ -890,6 +940,10 @@ async function renderDay(){
     noteLastIdx[a.note]=i;
   });
 
+  // 缓存供 openEdit 读取 detail
+  window._dayActMap={};
+  acts.forEach(a=>{ window._dayActMap[a.id]=a; });
+
   el.innerHTML=`<div class="row-cnt">${acts.length} 条记录</div>
     <div>${acts.map((a,i)=>{
       const c=cc(a.category),
@@ -912,6 +966,14 @@ async function renderDay(){
         <span class="act-note">${esc(a.note)}</span>${prioBadge(a.note)}
         ${cumHtml}
         <button class="edit-btn" onclick="openEdit(${a.id},'${sc}','${sn}','${ts}','${et}');event.stopPropagation()">✎</button>
+      </div>
+      <div class="act-detail-row">
+        <input class="act-detail-input" type="text"
+          placeholder="添加具体内容…"
+          value="${esc(a.detail||'').replace(/'/g,'&#39;')}"
+          data-id="${a.id}"
+          onblur="saveDetail(this)"
+          onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault();}"/>
       </div>`;
     }).join('')}</div>`;
 }
@@ -1048,6 +1110,9 @@ function openEdit(id,category,note,timestamp,endTime){
               onclick="selCat('${esc(cat).replace(/'/g,"&#39;")}',this)">${esc(cat)}</button>`;
   }).join('');
   document.getElementById('edit-note').value=note;
+  // detail from cached day map
+  const _act=window._dayActMap&&window._dayActMap[id];
+  document.getElementById('edit-detail').value=_act?(_act.detail||''):'';
 
   // start time display
   document.getElementById('edit-start-time').textContent=timestamp?fmtT(timestamp):'—';
@@ -1109,14 +1174,28 @@ async function saveAct(){
     if(end<=start) end.setDate(end.getDate()+1);
     end_time=toLocalISO(end);
   }
+  const detail=document.getElementById('edit-detail').value.trim()||null;
   await fetch(`/api/activities/${editId}`,{method:'PUT',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({category:editCat,note:note||editCat,end_time})});
+    body:JSON.stringify({category:editCat,note:note||editCat,end_time,detail})});
   closeEdit();render();
 }
 async function deleteAct(){
   await fetch(`/api/activities/${editId}`,{method:'DELETE'});
   closeEdit();render();
+}
+
+async function saveDetail(input){
+  const id=parseInt(input.dataset.id);
+  const detail=input.value.trim()||null;
+  // 从缓存读取当前记录其他字段
+  const a=window._dayActMap&&window._dayActMap[id];
+  if(!a)return;
+  await fetch(`/api/activities/${id}`,{method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({category:a.category,note:a.note,end_time:a.end_time||null,detail})});
+  // 更新缓存
+  if(a) a.detail=detail;
 }
 
 /* ═══════════════════════════════
@@ -1168,10 +1247,11 @@ async function applyInterval(mins){
    SETTINGS — SUB-TABS
    ═══════════════════════════════ */
 function switchSTab(tab){
-  ['timer','cats'].forEach(t=>{
+  ['timer','cats','export'].forEach(t=>{
     document.getElementById('stab-'+t).className='stab'+(t===tab?' on':'');
     document.getElementById('stab-'+t+'-pane').style.display=t===tab?'':'none';
   });
+  if(tab==='export') initExportDates();
 }
 
 async function renderSTab1(){
@@ -1358,6 +1438,59 @@ async function addCat(){
   await reloadMeta();renderCatsTopics();
 }
 async function reloadMeta(){await loadMeta();if(view!=='settings')render();}
+
+/* ═══════════════════════════════
+   EXPORT
+   ═══════════════════════════════ */
+function initExportDates(){
+  const today=fd(new Date());
+  const weekAgo=fd(new Date(Date.now()-6*86400000));
+  const es=document.getElementById('export-start');
+  const ee=document.getElementById('export-end');
+  if(es&&!es.value) es.value=weekAgo;
+  if(ee&&!ee.value) ee.value=today;
+}
+function setExportRange(days){
+  document.getElementById('export-start').value=fd(new Date(Date.now()-(days-1)*86400000));
+  document.getElementById('export-end').value=fd(new Date());
+}
+function setExportThisMonth(){
+  const n=new Date();
+  document.getElementById('export-start').value=`${n.getFullYear()}-${p2(n.getMonth()+1)}-01`;
+  document.getElementById('export-end').value=fd(n);
+}
+async function generateExport(){
+  const start=document.getElementById('export-start').value;
+  const end=document.getElementById('export-end').value;
+  if(!start||!end){alert('请选择开始和结束日期');return;}
+  if(start>end){alert('开始日期不能晚于结束日期');return;}
+  const btn=document.querySelector('#stab-export-pane .btn-save');
+  if(btn){btn.textContent='生成中…';btn.disabled=true;}
+  try{
+    const resp=await fetch(`/api/export?start=${start}&end=${end}`);
+    const text=await resp.text();
+    document.getElementById('export-text').value=text;
+    const lines=text.split('\n').length;
+    const words=text.length;
+    document.getElementById('export-info').textContent=`${lines} 行 · ${words} 字符`;
+    document.getElementById('export-result').style.display='block';
+  }finally{
+    if(btn){btn.textContent='生成';btn.disabled=false;}
+  }
+}
+async function copyExport(){
+  const text=document.getElementById('export-text').value;
+  if(!text)return;
+  try{
+    await navigator.clipboard.writeText(text);
+    const btn=event.target;
+    btn.textContent='✓ 已复制';
+    setTimeout(()=>{btn.textContent='📋 复制全文';},1800);
+  }catch{
+    document.getElementById('export-text').select();
+    document.execCommand('copy');
+  }
+}
 
 async function addTopic(inputEl){
   const name=inputEl.value.trim();

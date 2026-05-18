@@ -665,7 +665,8 @@ body::before {
   <div class="mbox">
     <div class="mbox-title">✦ 编辑记录 ✦</div>
     <div id="edit-cats" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px"></div>
-    <input id="edit-note" class="m-input" type="text" placeholder="活动内容"/>
+    <input id="edit-note" class="m-input" type="text" list="edit-suggestions" placeholder="选择专注主题，或直接输入"/>
+    <datalist id="edit-suggestions"></datalist>
 
     <!-- time row -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
@@ -1111,6 +1112,7 @@ function openEdit(id,category,note,timestamp,endTime){
               onclick="selCat('${esc(cat).replace(/'/g,"&#39;")}',this)">${esc(cat)}</button>`;
   }).join('');
   document.getElementById('edit-note').value=note;
+  _updateSuggestions('edit-suggestions', category);
   // detail from cached day map
   const _act=window._dayActMap&&window._dayActMap[id];
   document.getElementById('edit-detail').value=_act?(_act.detail||''):'';
@@ -1160,6 +1162,7 @@ function selCat(cat,btn){
   editCat=cat;
   document.querySelectorAll('#edit-cats .m-cat').forEach(b=>b.classList.remove('sel'));
   btn.classList.add('sel');
+  _updateSuggestions('edit-suggestions', cat);
 }
 function maybeCloseEdit(e){if(e.target===document.getElementById('edit-overlay'))closeEdit();}
 function closeEdit(){document.getElementById('edit-overlay').classList.remove('open');}
@@ -1637,8 +1640,8 @@ function openManualAdd(){
   setTimeout(()=>document.getElementById('ma-note').focus(),80);
 }
 
-async function _updateMaSuggestions(cat){
-  const dl=document.getElementById('ma-suggestions');
+async function _updateSuggestions(dlId, cat){
+  const dl=document.getElementById(dlId);
   if(!dl) return;
   try{
     const topics=await api('/api/focus_topics');
@@ -1649,6 +1652,7 @@ async function _updateMaSuggestions(cat){
     dl.innerHTML=filtered.map(t=>`<option value="${esc(t.name)}">`).join('');
   }catch(e){ dl.innerHTML=''; }
 }
+function _updateMaSuggestions(cat){ _updateSuggestions('ma-suggestions', cat); }
 
 function selectMaCat(cat,btn){
   maCat=cat;

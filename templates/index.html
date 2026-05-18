@@ -999,6 +999,10 @@ async function renderWeek(){
   ]);
   renderSummary(stats);
 
+  // 填充缓存，供 openEdit / saveDetail 使用
+  if(!window._dayActMap) window._dayActMap={};
+  acts.forEach(a=>{ window._dayActMap[a.id]=a; });
+
   const byDay={};
   acts.forEach(a=>{const k=a.timestamp.slice(0,10);(byDay[k]=byDay[k]||[]).push(a);});
   const tStr=fd(today());
@@ -1192,14 +1196,11 @@ async function deleteAct(){
 async function saveDetail(input){
   const id=parseInt(input.dataset.id);
   const detail=input.value.trim()||null;
-  // 从缓存读取当前记录其他字段
-  const a=window._dayActMap&&window._dayActMap[id];
-  if(!a)return;
-  await fetch(`/api/activities/${id}`,{method:'PUT',
+  await fetch(`/api/activities/${id}/detail`,{method:'PATCH',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({category:a.category,note:a.note,end_time:a.end_time||null,detail})});
-  // 更新缓存
-  if(a) a.detail=detail;
+    body:JSON.stringify({detail})});
+  // 同步更新缓存
+  if(window._dayActMap&&window._dayActMap[id]) window._dayActMap[id].detail=detail;
 }
 
 /* ═══════════════════════════════

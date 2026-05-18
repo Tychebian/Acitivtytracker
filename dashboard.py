@@ -315,6 +315,16 @@ def api_act_update(aid):
     return jsonify({"ok": True})
 
 
+@app.route("/api/activities/<int:aid>/detail", methods=["PATCH"])
+def api_act_detail(aid):
+    detail = (request.get_json(force=True) or {}).get("detail")
+    if detail is not None:
+        detail = str(detail).strip() or None
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("UPDATE activities SET detail=? WHERE id=?", (detail, aid))
+    return jsonify({"ok": True})
+
+
 @app.route("/api/activities/<int:aid>", methods=["DELETE"])
 def api_act_delete(aid):
     with sqlite3.connect(DB_PATH) as conn:
